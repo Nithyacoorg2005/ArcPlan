@@ -1,10 +1,13 @@
 import os
 from flask import Flask, request, jsonify
-from detect import main as run_yolo_detection 
+from detect import main as run_yolo_detection
+from flask_cors import CORS  # <-- 1. IMPORT THIS
 
 app = Flask(__name__)
+CORS(app)  # <-- 2. INITIALIZE CORS
 
 UPLOAD_FOLDER = 'uploads'
+# ... (rest of the file is exactly the same) ...
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER

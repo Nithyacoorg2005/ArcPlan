@@ -16,23 +16,55 @@ type AppState = 'upload' | 'processing' | 'results';
 
 function App() {
   const [state, setState] = useState<AppState>('upload');
-  
-  // 1. ADD NEW STATE to hold the real blueprint data
   const [blueprintData, setBlueprintData] = useState<BlueprintItem[]>([]);
+  // We'll also add a state for errors
+  const [errorMessage, setErrorMessage] = useState('');
 
-  // 2. UPDATE handleUpload to receive the data
-  const handleUpload = (data: BlueprintItem[]) => {
-    setBlueprintData(data); // <-- Save the data
+  // 1. handleUpload now receives a File and contains all the logic
+  const handleUpload = async (file: File) => {
+    // Immediately switch to the processing screen for a better UX
     setState('processing');
-  };
+    setErrorMessage(''); // Clear old errors
 
-  const handleProcessingComplete = () => {
-    setState('results');
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      // 2. The fetch logic is now here in App.tsx
+      const response = await fetch('http://127.0.0.1:5000/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        console.log('File processed:', data.filename);
+        
+        // 3. Save the data
+        setBlueprintData(data.blueprint || []);
+        
+        // 4. Move to the results screen
+        setState('results');
+
+      } else {
+        // Handle errors from the server
+        console.error('Upload error:', data.error);
+        setErrorMessage(data.error || 'An unknown error occurred.');
+        setState('upload'); // Go back to upload screen on error
+      }
+    } catch (error) {
+      // Handle network errors
+      console.error('Network error:', error);
+      setErrorMessage('Network error: Could not connect to the Python server.');
+      setState('upload'); // Go back to upload screen on error
+    }
   };
 
   const handleReset = () => {
     setState('upload');
-    setBlueprintData([]); // <-- Clear the data on reset
+    setBlueprintData([]);
+    setErrorMessage('');
   };
 
   return (
@@ -49,17 +81,26 @@ function App() {
           </div>
           <p className="text-white/60 text-sm">Video-to-Blueprint Converter</p>
         </div>
-      </header>
+      </header> 
 
       <main className="flex-1 flex flex-col">
-        {state === 'upload' && <UploadScreen onUpload={handleUpload} />}
-        {state === 'processing' && (
-          <ProcessingScreen onComplete={handleProcessingComplete} />
+        {/* This line will now be correct because handleUpload accepts a 'File' */}
+        {state === 'upload' && (
+          <UploadScreen onUpload={handleUpload} />
         )}
         
-        {/* 3. PASS THE REAL DATA to ResultsScreen */}
+        {/* The ProcessingScreen no longer needs props, it just spins */}
+        {state === 'processing' && <ProcessingScreen />}
+        
         {state === 'results' && (
           <ResultsScreen onReset={handleReset} data={blueprintData} />
+        )}
+
+        {/* Show an error message on the upload screen if something went wrong */}
+        {state === 'upload' && errorMessage && (
+          <div className="text-center p-4">
+            <p className="text-red-400 font-semibold">{errorMessage}</p>
+          </div>
         )}
       </main>
 

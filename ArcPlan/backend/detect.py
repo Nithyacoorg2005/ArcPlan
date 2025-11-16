@@ -1,114 +1,101 @@
 import cv2
 from ultralytics import YOLO
+import numpy as np
 
 # --- Configuration ---
-# 1. Load a pre-trained YOLO model (we're using 'yolov8n.pt' - 'n' is for 'nano')
 model = YOLO('yolov8n.pt') 
 
-# 2. Define the video files
-# VIDEO_INPUT_PATH is removed. It will be passed into main()
-VIDEO_OUTPUT_PATH = 'output_with_boxes.mp4' # The file we will create
-
-# 3. What objects are we interested in?
 INTERESTED_OBJECTS = [
-    'chair', 
-    'sofa', 
-    'bed', 
-    'tv', 
-    'laptop', 
-    'clock',  # This is our proxy for 'outlet'
-    'potted plant',
-    'bottle',
-    'cup',
-    'book',
-    'backpack',
-    'handbag',
-    'dining table',
-    'toilet',
-    'sink',
-    'refrigerator',
-    'oven',
-    'microwave',
-    'toaster',
-    # Note: 'kitchen sink', 'stove', 'faucet' are not in the default 80 classes.
-    # 'sink' is the correct class name. 'oven' is also correct.
+    'chair', 'sofa', 'bed', 'tv', 'laptop', 
+    'clock',  # Proxy for 'outlet'
+    'potted plant', 'bottle', 'cup', 'book', 'backpack', 'handbag',
+    'dining table', 'toilet', 'sink', 'refrigerator', 'oven', 'microwave', 'toaster',
 ]
 
 # --- Video Processing ---
-def main(video_input_path): # <-- IT NOW ACCEPTS AN ARGUMENT
+def main(video_input_path):
     print(f"Loading video: {video_input_path}")
     
-    # 1. Open the video file
-    cap = cv2.VideoCapture(video_input_path) # <-- USES THE ARGUMENT
+    cap = cv2.VideoCapture(video_input_path)
     if not cap.isOpened():
         print(f"Error: Could not open video file {video_input_path}")
-        return # We change this to 'return' instead of 'exit'
+        return [] # Return an empty list on error
 
-    # 2. Get video properties (width, height, fps)
     frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    fps = int(cap.get(cv2.CAP_PROP_FPS))
     
-    # 3. Create a video writer object to save the new video
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v') # Codec for .mp4
-    out = cv2.VideoWriter(VIDEO_OUTPUT_PATH, fourcc, fps, (frame_width, frame_height))
-    
-    print("AI model loaded. Starting object detection...")
-    print(f"This may take a few minutes depending on your video length.")
-    print(f"Saving results to: {VIDEO_OUTPUT_PATH}")
+    # This dictionary will store all detections
+    # e.g., {'chair': [(x1, y1), (x2, y2)], 'laptop': [(x3, y3)]}
+    object_detections = {}
 
+    print("AI model loaded. Starting object detection...")
     frame_count = 0
+
     while cap.isOpened():
-        # 4. Read one frame from the video
         ret, frame = cap.read()
         if not ret:
-            break # We've reached the end of the video
+            break 
 
         frame_count += 1
-        # Process every frame
-        if frame_count % 30 == 0: # Print a message every 30 frames (about 1 second)
+        # Process every 5th frame to speed things up
+        if frame_count % 5 != 0: 
+            continue
+        
+        # Print progress, but less often
+        if frame_count % 30 == 0:
             print(f"Processing frame {frame_count}...")
         
-        # 5. Run the AI model on the frame
-        results = model(frame, stream=True, verbose=False) # verbose=False cleans up the output
+        results = model(frame, stream=True, verbose=False)
 
         for result in results:
-            # 6. Get the names of the classes
             class_names = result.names
-            
-            # 7. Loop through all detected boxes
             for box in result.boxes:
-                # Get the class ID (e.g., 0 for 'person')
                 class_id = int(box.cls[0])
                 class_name = class_names[class_id]
                 
-                # 8. Check if this is an object we care about
                 if class_name in INTERESTED_OBJECTS:
-                    # Get box coordinates
-                    x1, y1, x2, y2 = map(int, box.xyxy[0])
+                    x1, y1, x2, y2 = box.xyxy[0]
+                    # Calculate center of the box
+                    cx = (x1 + x2) / 2
+                    cy = (y1 + y2) / 2
                     
-                    # Get confidence score
-                    confidence = float(box.conf[0])
-                    
-                    # Draw the box
-                    cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                    
-                    # Draw the label
-                    label = f"{class_name}: {confidence:.2f}"
-                    cv2.putText(frame, label, (x1, y1 - 10), 
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                    # Store the center point
+                    if class_name not in object_detections:
+                        object_detections[class_name] = []
+                    object_detections[class_name].append((cx, cy))
 
-        # 9. Write the processed frame to our output video
-        out.write(frame)
-
-    # 10. Clean up
     cap.release()
-    out.release()
     cv2.destroyAllWindows()
     print("\n--- ✅ Processing Complete ---")
-    print(f"Video saved successfully to {VIDEO_OUTPUT_PATH}")
+
+    # --- Create the Final Blueprint Data ---
+    blueprint_data = []
+    
+    # Rename 'clock' to 'outlet' for the frontend
+    if 'clock' in object_detections:
+        object_detections['outlet'] is object_detections.pop('clock')
+
+    for object_name, coords_list in object_detections.items():
+        # Calculate the average position for this object
+        avg_x = np.mean([c[0] for c in coords_list])
+        avg_y = np.mean([c[1] for c in coords_list])
+        
+        # Normalize coordinates (from 0.0 to 1.0)
+        norm_x = avg_x / frame_width
+        norm_y = avg_y / frame_height
+        
+        blueprint_data.append({
+            'name': object_name,
+            'x': norm_x, # 0.0 (left) to 1.0 (right)
+            'y': norm_y  # 0.0 (top) to 1.0 (bottom)
+        })
+
+    # THIS IS THE LINE THAT SHOULD APPEAR IN YOUR LOG
+    print(f"Sending blueprint data: {blueprint_data}")
+    return blueprint_data # <-- THE MOST IMPORTANT CHANGE!
 
 if __name__ == "__main__":
     # This part lets you still run 'python detect.py' to test it
-    # It will use a default video.
-    main('videos/ProjectVideo.mp4')
+    data = main('videos/ProjectVideo.mp4')
+    print("Test run complete. Detected objects:")
+    print(data)

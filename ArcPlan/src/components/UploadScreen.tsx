@@ -1,13 +1,16 @@
 import { Upload, Video } from 'lucide-react';
 import { useState } from 'react';
+import { BlueprintItem } from '../App'; // We still need this for the prop type
 
 interface UploadScreenProps {
+  // This prop will now be called by App.tsx to start the upload
   onUpload: (file: File) => void;
 }
 
 export function UploadScreen({ onUpload }: UploadScreenProps) {
   const [isDragging, setIsDragging] = useState(false);
 
+  // --- All your new drag-and-drop handlers are great ---
   const handleDragEnter = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -34,14 +37,14 @@ export function UploadScreen({ onUpload }: UploadScreenProps) {
     const videoFile = files.find((file) => file.type.startsWith('video/'));
 
     if (videoFile) {
-      onUpload(videoFile);
+      onUpload(videoFile); // Pass the file to App.tsx
     }
   };
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files[0]) {
-      onUpload(files[0]);
+      onUpload(files[0]); // Pass the file to App.tsx
     }
   };
 
@@ -72,14 +75,14 @@ export function UploadScreen({ onUpload }: UploadScreenProps) {
           <div className="flex flex-col items-center space-y-6">
             <div
               className={`
-              relative p-6 rounded-full
-              transition-all duration-300
-              ${
-                isDragging
-                  ? 'bg-blueprint-cyan shadow-[0_0_40px_rgba(0,212,255,0.6)]'
-                  : 'bg-blueprint-blue'
-              }
-            `}
+                relative p-6 rounded-full
+                transition-all duration-300
+                ${
+                  isDragging
+                    ? 'bg-blueprint-cyan shadow-[0_0_40px_rgba(0,212,255,0.6)]'
+                    : 'bg-blueprint-blue'
+                }
+              `}
             >
               {isDragging ? (
                 <Video

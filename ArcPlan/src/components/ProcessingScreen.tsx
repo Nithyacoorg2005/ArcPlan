@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 
-interface ProcessingScreenProps {
-  onComplete: () => void;
-}
+// This component no longer needs props
+// It just shows an animation until App.tsx changes the state
 
 const steps = [
   'Analyzing room path...',
@@ -11,26 +10,21 @@ const steps = [
   'Assembling final plan...',
 ];
 
-export function ProcessingScreen({ onComplete }: ProcessingScreenProps) {
+export function ProcessingScreen() {
   const [currentStep, setCurrentStep] = useState(0);
 
+  // This timer is just for the text animation
+  // It no longer controls the app state
   useEffect(() => {
     const stepDuration = 2000;
 
     const interval = setInterval(() => {
-      setCurrentStep((prev) => {
-        if (prev < steps.length - 1) {
-          return prev + 1;
-        } else {
-          clearInterval(interval);
-          setTimeout(onComplete, 1000);
-          return prev;
-        }
-      });
+      // Loop the steps
+      setCurrentStep((prev) => (prev + 1) % steps.length);
     }, stepDuration);
 
     return () => clearInterval(interval);
-  }, [onComplete]);
+  }, []);
 
   return (
     <div className="flex-1 flex items-center justify-center p-8">
@@ -122,8 +116,6 @@ export function ProcessingScreen({ onComplete }: ProcessingScreenProps) {
                   ${
                     index === currentStep
                       ? 'text-white font-semibold scale-105'
-                      : index < currentStep
-                      ? 'text-green-400'
                       : 'text-white/30'
                   }
                 `}
@@ -132,9 +124,6 @@ export function ProcessingScreen({ onComplete }: ProcessingScreenProps) {
                   Step {index + 1}/{steps.length}:
                 </span>
                 <span>{step}</span>
-                {index < currentStep && (
-                  <span className="ml-2 text-green-400">✓</span>
-                )}
                 {index === currentStep && (
                   <span className="ml-2 inline-block animate-glow">⚡</span>
                 )}
