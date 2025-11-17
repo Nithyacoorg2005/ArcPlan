@@ -106,7 +106,8 @@ function App() {
 
       <footer className="border-t border-blueprint-cyan/20 bg-blueprint-darker/50 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-8 py-4 text-center text-white/40 text-sm">
-          <p>Powered by AI Blueprint Technology</p>
+          <p>Submitted to Arc - Image-to-model tool Hackathon</p>
+          <p>Developed by Nithyashree CS</p>
         </div>
       </footer>
     </div>

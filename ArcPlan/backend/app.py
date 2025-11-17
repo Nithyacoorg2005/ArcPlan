@@ -1,13 +1,21 @@
 import os
 from flask import Flask, request, jsonify
 from detect import main as run_yolo_detection
-from flask_cors import CORS  # <-- 1. IMPORT THIS
+from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app)  # <-- 2. INITIALIZE CORS
+
+# This explicitly tells the server to accept requests from your React app
+cors = CORS(app, resources={
+    r"/upload": {
+        "origins": [
+            "http://localhost:5173", 
+            "http://127.0.0.1:5173"
+        ]
+    }
+})
 
 UPLOAD_FOLDER = 'uploads'
-# ... (rest of the file is exactly the same) ...
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -33,7 +41,6 @@ def upload_video():
         # --- RUN YOLO AND GET DATA BACK ---
         print(f"Starting YOLO processing on {filepath}...")
         try:
-            # 1. CATCH THE RETURNED DATA
             blueprint_data = run_yolo_detection(filepath) 
             print("YOLO processing finished.")
         except Exception as e:
@@ -44,7 +51,7 @@ def upload_video():
         # 2. SEND THE BLUEPRINT DATA TO REACT
         return jsonify({
             'message': 'File processed successfully',
-            'blueprint': blueprint_data  # <-- HERE IS THE DATA
+            'blueprint': blueprint_data
         }), 200
 
 if __name__ == '__main__':

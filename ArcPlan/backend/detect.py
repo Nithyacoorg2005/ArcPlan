@@ -24,8 +24,6 @@ def main(video_input_path):
     frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     
-    # This dictionary will store all detections
-    # e.g., {'chair': [(x1, y1), (x2, y2)], 'laptop': [(x3, y3)]}
     object_detections = {}
 
     print("AI model loaded. Starting object detection...")
@@ -73,7 +71,7 @@ def main(video_input_path):
     
     # Rename 'clock' to 'outlet' for the frontend
     if 'clock' in object_detections:
-        object_detections['outlet'] is object_detections.pop('clock')
+        object_detections['outlet'] = object_detections.pop('clock')
 
     for object_name, coords_list in object_detections.items():
         # Calculate the average position for this object
@@ -86,11 +84,13 @@ def main(video_input_path):
         
         blueprint_data.append({
             'name': object_name,
-            'x': norm_x, # 0.0 (left) to 1.0 (right)
-            'y': norm_y  # 0.0 (top) to 1.0 (bottom)
+            # --- THE FIX IS HERE ---
+            # We must convert the NumPy float32 to a standard Python float
+            'x': float(norm_x), 
+            'y': float(norm_y)  
+            # -----------------------
         })
 
-    # THIS IS THE LINE THAT SHOULD APPEAR IN YOUR LOG
     print(f"Sending blueprint data: {blueprint_data}")
     return blueprint_data # <-- THE MOST IMPORTANT CHANGE!
 
